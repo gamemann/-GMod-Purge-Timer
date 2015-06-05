@@ -1,0 +1,11 @@
+"AddonInfo"
+{
+	"name"				"Purge Timer"
+	"version"			"1.0"
+	"up_date"			"06/05/15"
+	"author_name"			"[GFL] Roy (Christian Deacon)"
+	"author_email"			"christiand@thedevelopingcommunity.com"
+	"author_url"			"http://thedevelopingcommunity.com/"
+	"info"				"Purge Timer."
+	"override"			"0"
+}
