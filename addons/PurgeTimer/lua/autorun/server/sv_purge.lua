@@ -8,13 +8,14 @@ util.AddNetworkString("PurgeEndTimer");
 local bTakeDamage = false;
 local iRounds = 0;
 local bPurgeInProgress = false;
+local bInPrepareDelayTime = false;
 
 -- ConVars/Settings
 local pt1 = CreateConVar("sv_purge_time", "12", _, "The amount of time the Purge lasts for in minutes.");
 local pt2 = CreateConVar("sv_purge_setup_time", "45", _, "The amount of time until the Purge begins (setup time) in minutes.");
 local pt3 = CreateConVar("sv_purge_announcement_time", "52", _, "The amount of time the announcement before the Purge begins takes (length of the file) in seconds");
 local pt4 = CreateConVar("sv_purge_maxrounds", "16", _, "The maximum rounds (Purge beginning to end) until the map restarts to clear the precache table");
-local pt5 = CreateConVar("sv_purge_debug", "1", _, "Debug the Purge Timer?");
+local pt5 = CreateConVar("sv_purge_debug", "0", _, "Debug the Purge Timer?");
 local pt6 = CreateConVar("sv_purge_check", "1", _, "Check to ensure the Purge timer is set every 30 seconds?");
 
 local settings = {};
@@ -85,11 +86,11 @@ local function VerifyUser (ply)
 	return bAllow;
 end
 -- PURGE Functions
-function PURGE.SetNight(night)
+function PURGE.SetNight(bNight)
 	if (settings.bDebug) then
 		print("[PT DEBUG]Function PURGE.SetNight() :: Called.\n");
 	end
-	if(night) then
+	if(bNight) then
 		if (settings.bDebug) then
 			print("[PT DEBUG]Setting Night :: True.\n");
 		end
@@ -113,7 +114,7 @@ function PURGE.SetNight(night)
 end
 
 -- Local Functions
-local function KillTimers()
+function PURGE.KillTimers()
 	timer.Stop("Timer_SetPurgeTimer");
 	timer.Stop("Timer_PurgeAnnouncement");
 	timer.Stop("Timer_PurgeStart");
@@ -122,7 +123,7 @@ local function KillTimers()
 end
 
 -- Local Timer Functions
-local function SetPurgeTimer()
+function PURGE.SetTimer()
 	if (settings.bDebug) then
 		print("[PT DEBUG]Function SetPurgeTimer() :: Called.\n");
 	end
@@ -134,11 +135,11 @@ local function SetPurgeTimer()
 	net.Start("PurgeTimer");
 	net.WriteUInt(PURGE.Timer,32);
 	net.Broadcast();
-	BroadcastLua([[chat.AddText(Color(200,72,72),"[ALERT] ",Color(255,255,255),"The Purge starts in 45 minutes!")]]);
+	BroadcastLua([[chat.AddText(Color(200,72,72),"[ALERT] ",Color(255,255,255),"Begin to setup for the next Purge!")]]);
 	bPurgeInProgress = false;
 end
 
-local function PurgeAnnouncement()
+function PURGE.Announcement()
 	if (settings.bDebug) then
 		print("[PT DEBUG]Function PurgeAnnouncement() :: Called.\n");
 	end
@@ -152,7 +153,7 @@ local function PurgeAnnouncement()
 	end
 end
 
-local function PurgeStart()
+function PURGE.Start()
 	if (settings.bDebug) then
 		print("[PT DEBUG]Function PurgeStart() :: Called.\n");
 	end
@@ -175,7 +176,7 @@ local function PurgeStart()
 	end
 end
 
-local function PurgeOver()
+function PURGE.Over()
 	if (settings.bDebug) then
 		print("[PT DEBUG]Function PurgeOver() :: Called.\n");
 	end
@@ -207,45 +208,31 @@ local function PurgeOver()
 		end)
 	end
 	
-	bPurgeInProgress = false;
-	
-	-- Stop all the timers just in-case.
-	KillTimers();
-	
-	-- Start the timers.
-	timer.Create("Timer_SetPurgeTimer", 1, 1, SetPurgeTimer);
-	timer.Create("Timer_PurgeAnnouncement", (settings.fPurgeSetupTime * 60) - settings.fPurgeAnnouncementTime, 1, PurgeAnnouncement);
-	timer.Create("Timer_PurgeStart", settings.fPurgeSetupTime * 60, 1, PurgeStart);
-	timer.Create("Timer_PurgeOver", (settings.fPurgeSetupTime * 60) + (settings.fPurgeTime * 60), 1, PurgeOver);
-	
-	if (settings.bDebug) then
-		print("[PT DEBUG]Function PurgeOver() :: Ended.\n");
-	end
+	bInPrepareDelayTime = true;
+	timer.Simple(1, function()
+		PURGE.SetUpPurge();
+		bInPrepareDelayTime = false;
+	end)
 end
 
-local function GB_SetUpPurge()
+function PURGE.SetUpPurge()
 	if (settings.bDebug) then
-		print("[PT DEBUG]Function GB_SetUpPurge() :: Called.\n");
+		print("[PT DEBUG]Function SetUpPurge() :: Called.\n");
 	end
 	
 	bPurgeInProgress = false;
 	
 	-- Stop all the timers just in-case.
-	KillTimers();
-	
-	-- Debug
-	if (settings.bDebug) then
-		print("[PT DEBUG]GB_SetUpPurge Timer Values: \n1. " .. settings.fPurgeSetupTime .. "\n");
-	end
+	PURGE.KillTimers();
 	
 	-- Start the timers.
-	timer.Create("Timer_SetPurgeTimer", 1, 1, SetPurgeTimer);
-	timer.Create("Timer_PurgeAnnouncement", (settings.fPurgeSetupTime * 60) - settings.fPurgeAnnouncementTime, 1, PurgeAnnouncement);
-	timer.Create("Timer_PurgeStart", settings.fPurgeSetupTime * 60, 1, PurgeStart);
-	timer.Create("Timer_PurgeOver", (settings.fPurgeSetupTime * 60) + (settings.fPurgeTime * 60), 1, PurgeOver);
+	timer.Create("Timer_SetPurgeTimer", 1, 1, PURGE.SetTimer);
+	timer.Create("Timer_PurgeAnnouncement", (settings.fPurgeSetupTime * 60) - settings.fPurgeAnnouncementTime, 1, PURGE.Announcement);
+	timer.Create("Timer_PurgeStart", settings.fPurgeSetupTime * 60, 1, PURGE.Start);
+	timer.Create("Timer_PurgeOver", (settings.fPurgeSetupTime * 60) + (settings.fPurgeTime * 60), 1, PURGE.Over);
 	
 	if (settings.bDebug) then
-		print("[PT DEBUG]Function GB_SetUpPurge() :: Ended.\n");
+		print("[PT DEBUG]Function SetUpPurge() :: Ended.\n");
 	end
 end
 
@@ -256,7 +243,7 @@ hook.Add("InitPostEntity","SetupPurge",function()
 	end
 	
 	timer.Create("Timer_DelayPurgeStartup", 5.0, 1, function()
-		GB_SetUpPurge();
+		PURGE.SetUpPurge();
 	end);
 end)
 
@@ -303,14 +290,14 @@ concommand.Add("purge_start", function (ply)
 	end
 	
 	-- Check
-	KillTimers();
+	PURGE.KillTimers();
 	
 	if (settings.bDebug) then
 		print("[PT DEBUG]Manually starting Purge.\n");
 	end
 	
-	PurgeStart();
-	timer.Create("Timer_PurgeOver", settings.fPurgeTime * 60, 1, PurgeOver);
+	PURGE.Start();
+	timer.Create("Timer_PurgeOver", settings.fPurgeTime * 60, 1, PURGE.Over);
 end)
 
 concommand.Add("purge_start2", function (ply)
@@ -324,16 +311,16 @@ concommand.Add("purge_start2", function (ply)
 	end
 	
 	-- Checks
-	KillTimers();
+	PURGE.KillTimers();
 	
-	PurgeAnnouncement();
+	PURGE.Announcement();
 	timer.Create("Manual_PurgeStart", settings.fPurgeAnnouncementTime, 1, function()
 		if (settings.bDebug) then
 			print("[PT DEBUG]Manually starting Purge (announcement included).\n");
 		end
 		
-		PurgeStart();
-		timer.Create("Timer_PurgeOver", settings.fPurgeTime * 60, 1, PurgeOver);
+		PURGE.Start();
+		timer.Create("Timer_PurgeOver", settings.fPurgeTime * 60, 1, PURGE.Over);
 	end);
 end)
 
@@ -348,7 +335,7 @@ concommand.Add("purge_stop", function (ply)
 		print("[PT DEBUG]Concommand purge_stop :: Called by " .. ply:Nick() .. " (" .. ply:SteamID() .. ").\n");
 	end
 	
-	PurgeOver();
+	PURGE.Over();
 end)
 
 concommand.Add("setup_purge", function (ply)
@@ -361,7 +348,7 @@ concommand.Add("setup_purge", function (ply)
 		print("[PT DEBUG]Concommand setup_purge :: Called by " .. ply:Nick() .. " (" .. ply:SteamID() .. ").\n");
 	end
 	
-	GB_SetUpPurge();
+	PURGE.SetUpPurge();
 end)
 
 concommand.Add("purge_status", function (ply)
@@ -377,7 +364,7 @@ concommand.Add("purge_disable", function (ply)
 		return;
 	end
 	
-	KillTimers();
+	PURGE.KillTimers();
 	ply:ChatPrint("[PT]Purge is now disabled.");
 	
 	if (settings.bDebug and ply) then
@@ -387,13 +374,13 @@ end)
 
 if settings.bCheck then
 	timer.Create("Purge_Check", 30.0, 0, function()
-		if not timer.Exists("Timer_PurgeOver") and not timer.Exists("Timer_PurgeStart") and not timer.Exists("Manual_PurgeStart") and not timer.Exists("Timer_PurgeAnnouncement") then
+		if not timer.Exists("Timer_PurgeOver") and not timer.Exists("Timer_PurgeStart") and not timer.Exists("Manual_PurgeStart") and not timer.Exists("Timer_PurgeAnnouncement") and not bInPrepareDelayTime then
 			if (settings.bDebug) then
 				print("[PT DEBUG]Check :: Found no Purge timers. Restarting game-mode.\n");
 			end
 			
 			-- Nothing is happening. Therefore, we must reset the game-mode.
-			GB_SetUpPurge();
+			PURGE.SetUpPurge();
 		end
 	end)
 else

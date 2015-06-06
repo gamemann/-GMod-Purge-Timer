@@ -29,7 +29,7 @@ end)
 
 usermessage.Hook("PurgeStart", function(umsg)
 	if (IsValid(station)) then station:Play() end
-	chat.AddText(Color(200,72,72),"[ALERT]",Color(255,255,255),"The Purge has begun! All crime is legal for 12 minutes! Good luck!")
+	chat.AddText(Color(200,72,72),"[ALERT]",Color(255,255,255),"The Purge has begun! All crime is legal. Good luck!")
 	bPurgeInProgress = true
 end)
 
