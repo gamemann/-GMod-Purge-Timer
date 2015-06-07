@@ -54,7 +54,7 @@ hook.Add("HUDPaint","PurgePaint",function()
 		end
 		
 		if (tTimer) then
-			draw.SimpleText("THE PURGE BEGINS IN:","FeastOfFleshB",ScrW()/2,30,Color(200,7,7,255),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
+			draw.SimpleText("THE PURGE BEGINS IN:","FeastOfFleshB",ScrW()/2,30,Color(170,7,7,255),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			draw.SimpleText(string.FormattedTime(tLeft,"%02i:%02i"),"FeastOfFleshA",ScrW()/2,110,Color(200,7,7,255),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 		end
 	elseif (eTimer) then
